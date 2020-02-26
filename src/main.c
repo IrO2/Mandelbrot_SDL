@@ -9,10 +9,11 @@ void renduLigne(SDL_Surface *SurfMand,  SDL_Surface *image);
 Uint32 getpixel(SDL_Surface *surface, int x, int y);
 void dessinerRectangle(SDL_Surface *surface, SDL_Rect *rect, Uint32 couleur);
 
+char nomFichier[50] = "material/1.bmp";
+
 const int HEIGHT = 600 ,WIDTH = 800;
-double ratioEcran = (double)HEIGHT/(double)WIDTH;
-long double zoom= 0.4, start_x =-0.75, start_y= 0;
-long double Pzoom= 0.4, Pstart_x =-0.75, Pstart_y= 0;
+long double zoom= 1, start_x =-0.75, start_y= 0;
+long double Pzoom= 0.4, Pstart_x , Pstart_y= 0;
 
 unsigned int MAX_ITERATION = 300;
 int y =0;
@@ -23,7 +24,7 @@ int format;
 
 int main(int argc, char* argv[])
 {
-    SDL_Surface *ecran;
+    SDL_Surface *ecran,*texte;
     
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
@@ -31,22 +32,17 @@ int main(int argc, char* argv[])
     ecran = SDL_SetVideoMode(WIDTH, HEIGHT, 32, SDL_HWSURFACE);
     SDL_WM_SetCaption("Ma super fenêtre SDL !", NULL);
 
-    SDL_Surface *image = SDL_LoadBMP("material.bmp");
+    SDL_Surface *image = SDL_LoadBMP(nomFichier);
     SDL_Surface *SurfMand =  SDL_CreateRGBSurface(0,WIDTH,HEIGHT,32,0,0,0,0);
     SDL_LockSurface(image);
 
     SDL_Rect position = {0,0,0,0};
     SDL_Rect position2 = {0,0,0,0};
-    
     SDL_Rect *rect;
-    TTF_Font *font=TTF_OpenFont("arial.ttf", 12);
-    if(!font) {
-        printf("TTF_OpenFont: %s\n", TTF_GetError());
-    }
-      SDL_Color couleur;
-      couleur.r = 255;
 
-    SDL_Surface *texte;
+    TTF_Font *font=TTF_OpenFont("arial.ttf", 20);
+    SDL_Color couleur;
+
 
     SDL_Event events;
     int isOpen = 1;
@@ -117,13 +113,15 @@ int main(int argc, char* argv[])
                         start_y = cy/zoom/(double)HEIGHT+start_y;
                         zoom*= WIDTH/rect->w;
                         y = 0;
+                        fprintf(stdout, "x = %lf y = %lf zoom = %lf\n", start_x,start_y,zoom);
+
                     }
                     
                     
                     break;
                 case SDL_MOUSEMOTION:
                     rect->w = events.motion.x - rect->x;
-                    rect->h = (events.motion.x - rect->x)*(ratioEcran);
+                    rect->h = (events.motion.x - rect->x)*(double)HEIGHT/(double)WIDTH;
 
                     
                     
