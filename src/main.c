@@ -12,8 +12,8 @@ void dessinerRectangle(SDL_Surface *surface, SDL_Rect *rect, Uint32 couleur);
 char nomFichier[50] = "material/1.bmp";
 
 const int HEIGHT = 600 ,WIDTH = 800;
-long double zoom= 1, start_x =-0.75, start_y= 0;
-long double Pzoom= 0.4, Pstart_x , Pstart_y= 0;
+double zoom= 0.4, start_x =-0.75, start_y= 0;
+double Pzoom= 0.4, Pstart_x , Pstart_y= 0;
 
 unsigned int MAX_ITERATION = 300;
 int y =0;
@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
                         start_y = cy/zoom/(double)HEIGHT+start_y;
                         zoom*= WIDTH/rect->w;
                         y = 0;
-                        fprintf(stdout, "x = %lf y = %lf zoom = %lf\n", start_x,start_y,zoom);
+                        fprintf(stdout, "x = %20.9lf y = %lf zoom = %lf\n", start_x,start_y,zoom);
 
                     }
                     
@@ -140,7 +140,7 @@ int main(int argc, char* argv[])
             dessinerRectangle(ecran, rect, SDL_MapRGB(ecran->format,255,0,0));
         }
         char txt[100];
-        sprintf(txt, "x = %g y = %g zoom = %g", start_x,start_y,zoom);
+        sprintf(txt, "x = %lf y = %lf zoom = %lf", start_x,start_y,zoom);
         
         texte  = TTF_RenderText_Solid(font, txt, couleur);
         position2.y = HEIGHT- texte->h;
@@ -173,11 +173,11 @@ void renduLigne(SDL_Surface *SurfMand, SDL_Surface *image){
     Uint32 *pixelsMand = SurfMand->pixels;
     
     if(y<HEIGHT){
-         double p_i = ( y-HEIGHT/2 )/ (zoom* HEIGHT)+start_y;
+         long double p_i = ( y-HEIGHT/2 )/ (zoom* HEIGHT)+start_y;
 
 
         for (int x = 0; x < WIDTH; ++x) {
-             double p_r =  (x-WIDTH/2 )/ (zoom* WIDTH)+start_x;
+             long double p_r =  (long double)(x-WIDTH/2 )/ (long double)(zoom* WIDTH)+(long double) start_x;
 
             int i  = mandelbrot(x, y, p_r, p_i);
             if (i == MAX_ITERATION)
