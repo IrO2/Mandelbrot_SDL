@@ -2,10 +2,11 @@
 #include <stdio.h> 
 #include <stdlib.h>
 #include <SDL/SDL_ttf.h>
-
 #include <math.h>
-int mandelbrot(int x, int y, double  p_r, double p_i);
-void renduLigne(SDL_Surface *SurfMand,  SDL_Surface *image);
+#define MAX_THREADS  8
+
+int mandelbrot(double  p_r, double p_i);
+int renduLigne(void *data);
 Uint32 getpixel(SDL_Surface *surface, int x, int y);
 void dessinerRectangle(SDL_Surface *surface, SDL_Rect *rect, Uint32 couleur);
 
@@ -15,15 +16,26 @@ const int HEIGHT = 600 ,WIDTH = 800;
 double zoom= 0.4, start_x =-0.75, start_y= 0;
 double Pzoom= 0.4, Pstart_x , Pstart_y= 0;
 
-unsigned int MAX_ITERATION = 300;
+unsigned int MAX_ITERATION = 1000;
 int y =0;
-int color = 4;
+int color = 10;
 
 int pressed = 0;
 int format;
 
+typedef struct ThreadData
+{
+    SDL_Surface *SurfMand;
+    SDL_Surface *image;
+    int y;
+}ThreadData;
+
+
+
 int main(int argc, char* argv[])
 {
+    SDL_Thread *thread[MAX_THREADS];
+
     SDL_Surface *ecran,*texte;
     
     SDL_Init(SDL_INIT_VIDEO);
@@ -46,6 +58,12 @@ int main(int argc, char* argv[])
 
     SDL_Event events;
     int isOpen = 1;
+
+    ThreadData *data = (ThreadData *) malloc(sizeof(ThreadData));
+    
+    data->image = image;
+    data->SurfMand = SurfMand;
+    data->y=y;
 
     while (isOpen)
     {
@@ -111,30 +129,63 @@ int main(int argc, char* argv[])
                         double cy = (rect->y+rect->h/2) -HEIGHT/2;
                         start_x = cx/zoom/(double) WIDTH+ start_x ;
                         start_y = cy/zoom/(double)HEIGHT+start_y;
-                        zoom*= WIDTH/rect->w;
+                        fprintf(stdout,"%d",rect->w);
+                        zoom*= HEIGHT/rect->h;
                         y = 0;
-                        fprintf(stdout, "x = %20.9lf y = %lf zoom = %lf\n", start_x,start_y,zoom);
 
                     }
-                    
-                    
                     break;
+
                 case SDL_MOUSEMOTION:
                     rect->w = events.motion.x - rect->x;
                     rect->h = (events.motion.x - rect->x)*(double)HEIGHT/(double)WIDTH;
+                    break;
 
                     
                     
                     
             }
         }
-        renduLigne(SurfMand, image);
+        if(y < HEIGHT)
+        {
+            SDL_LockSurface(SurfMand);
+            data->y = y;
+
+            for (int i = 0; i < MAX_THREADS; i++)
+            {
+                if (y < HEIGHT)
+                {
+                    
+
+                    thread[i] = SDL_CreateThread(renduLigne,   data);
+                    y++;
+                    data->y++;
+                }
+                
+                
+            
+               
+            }
+            for (int i = 0; i < MAX_THREADS; i++)
+            {
+                
+                SDL_WaitThread(thread[i],NULL);
+                
+            
+               
+            }
+            
+            SDL_UnlockSurface(SurfMand);
+        }
+        
+        
+        
         SDL_FillRect(ecran, NULL, SDL_MapRGB(ecran->format,0,0,0));
 
         position.x=0;
         position.y=0;
         
-        SDL_BlitSurface(SurfMand, NULL, ecran, &position); // Collage de la surface sur l'écran
+        SDL_BlitSurface(SurfMand, NULL, ecran, &position);
         
         if(pressed){
             dessinerRectangle(ecran, rect, SDL_MapRGB(ecran->format,255,0,0));
@@ -148,10 +199,9 @@ int main(int argc, char* argv[])
         SDL_FreeSurface(texte);
 
         SDL_Flip(ecran);
-        y++;
         fprintf(stderr, "%s", SDL_GetError());
         fprintf(stderr, "%s", TTF_GetError());
-
+        int z = 1;
 
     }
 
@@ -159,53 +209,50 @@ int main(int argc, char* argv[])
     SDL_FreeSurface(SurfMand);
     SDL_FreeSurface(ecran);
     TTF_CloseFont(font); 
-
+    free(data);
     TTF_Quit();
     SDL_Quit();
     return EXIT_SUCCESS;
 }
 
-void renduLigne(SDL_Surface *SurfMand, SDL_Surface *image){
-    SDL_LockSurface(SurfMand);
+int renduLigne(void *data){
+    ThreadData *tdata = data;
+    SDL_Surface *image = tdata->image;
+    SDL_Surface *SurfMand = tdata->SurfMand;
+    int u = tdata->y;
+
     Uint8 r,g,b;
     Uint32 *p = image->pixels;
     int pitch;
     Uint32 *pixelsMand = SurfMand->pixels;
     
-    if(y<HEIGHT){
-         long double p_i = ( y-HEIGHT/2 )/ (zoom* HEIGHT)+start_y;
+    long double p_i = ( u-HEIGHT/2 )/ (zoom* HEIGHT)+start_y;
 
 
-        for (int x = 0; x < WIDTH; ++x) {
-             long double p_r =  (long double)(x-WIDTH/2 )/ (long double)(zoom* WIDTH)+(long double) start_x;
+    for (int x = 0; x < WIDTH; ++x) {
+        
+        long double p_r =  (long double)(x-WIDTH/2 )/ (long double)(zoom* WIDTH)+(long double) start_x;
 
-            int i  = mandelbrot(x, y, p_r, p_i);
-            if (i == MAX_ITERATION)
-            {
-                pixelsMand[y *WIDTH + x] = 0;
-            }
-            else
-            {
-                i= i*color;
-               // i= (int)((double) ((double) i *image->w/ MAX_ITERATION));
-                i= i%image->w;
-                pixelsMand[y *WIDTH + x] = p[i];
+        int i  = mandelbrot(p_r, p_i);
 
-                
-            }
-
-            
+        if (i == MAX_ITERATION)
+        {
+            pixelsMand[u *WIDTH + x] = 0;
+        }
+        else
+        {
+            i= i*color;
+            i= i%image->w;
+            pixelsMand[u *WIDTH + x] = p[i];
         }
     }
 
-
-    SDL_UnlockSurface(SurfMand);
-
+    return 0;
 }
 
 
 
-int mandelbrot(int x, int y, double  p_r, double p_i){
+int mandelbrot(double  p_r, double p_i){
     unsigned int j = 0;
     long double r = 0, i = 0, temp_r = 0;
 
