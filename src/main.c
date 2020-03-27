@@ -202,7 +202,7 @@ int main(int argc, char* argv[])
         //position2.y = HEIGHT- texte->h;
         //SDL_BlitSurface(texte, NULL, ecran, &position2);
         //SDL_FreeSurface(texte);
-
+ 
         SDL_Flip(ecran);
         fprintf(stderr, "%s", SDL_GetError());
         fprintf(stderr, "%s", TTF_GetError());
