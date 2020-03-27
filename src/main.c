@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <SDL/SDL_ttf.h>
 #include <math.h>
-#define MAX_THREADS  8
+#define MAX_THREADS 64
 
 int mandelbrot(double  p_r, double p_i);
 int renduLigne(void *data);
@@ -18,7 +18,7 @@ double Pzoom= 0.4, Pstart_x , Pstart_y= 0;
 
 unsigned int MAX_ITERATION = 1000;
 int y =0;
-int color = 10;
+int color = 4;
 
 int pressed = 0;
 int format;
@@ -35,8 +35,11 @@ typedef struct ThreadData
 int main(int argc, char* argv[])
 {
     SDL_Thread *thread[MAX_THREADS];
+    ThreadData *datas[MAX_THREADS];
+    
+    
 
-    SDL_Surface *ecran,*texte;
+    SDL_Surface *ecran;//,*texte;
     
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
@@ -52,23 +55,28 @@ int main(int argc, char* argv[])
     SDL_Rect position2 = {0,0,0,0};
     SDL_Rect *rect;
 
-    TTF_Font *font=TTF_OpenFont("arial.ttf", 20);
-    SDL_Color couleur;
+    //TTF_Font *font=TTF_OpenFont("arial.ttf", 20);
+    //SDL_Color couleur = {0,0,0};
 
 
     SDL_Event events;
     int isOpen = 1;
 
-    ThreadData *data = (ThreadData *) malloc(sizeof(ThreadData));
+    for (int i = 0; i < MAX_THREADS; i++)
+    {
+        datas[i] = (ThreadData *) malloc(sizeof(ThreadData));
+        datas[i]->image = image;
+        datas[i]->SurfMand = SurfMand;
+
+    }
     
-    data->image = image;
-    data->SurfMand = SurfMand;
-    data->y=y;
 
     while (isOpen)
     {
+
         while(SDL_PollEvent(&events) == 1)          
         {
+
             switch (events.type)
             {
                 case SDL_QUIT:
@@ -78,6 +86,8 @@ int main(int argc, char* argv[])
                     switch (events.key.keysym.sym)
                     {
                         case SDLK_DOWN:
+                                    
+
                             MAX_ITERATION-=100;
                           
                             y=0;
@@ -94,20 +104,19 @@ int main(int argc, char* argv[])
                             y=0;
                             break;
                         case SDLK_a:
-                            color+=1;
+                            color++;
                           
                             y=0;
                             break;
                         case SDLK_q:
-                            color-=1;
+                            color--;
                             y=0;
                             break;
                     }
                     break;
                     
-
                 case SDL_MOUSEBUTTONDOWN:
-                    
+
                     
                         rect->x = events.button.x;
                         rect->y = events.button.y;
@@ -117,10 +126,8 @@ int main(int argc, char* argv[])
                     
                     break;
                     
-
-                    
                 case SDL_MOUSEBUTTONUP:
-                    
+
                     pressed = 0;
                     if (rect->h !=0 &&rect->w !=0)
                     {
@@ -129,52 +136,50 @@ int main(int argc, char* argv[])
                         double cy = (rect->y+rect->h/2) -HEIGHT/2;
                         start_x = cx/zoom/(double) WIDTH+ start_x ;
                         start_y = cy/zoom/(double)HEIGHT+start_y;
-                        fprintf(stdout,"%d",rect->w);
-                        zoom*= HEIGHT/rect->h;
+                        zoom*= (double)HEIGHT/(double) rect->h;
                         y = 0;
 
                     }
                     break;
 
                 case SDL_MOUSEMOTION:
+
                     rect->w = events.motion.x - rect->x;
                     rect->h = (events.motion.x - rect->x)*(double)HEIGHT/(double)WIDTH;
                     break;
 
                     
-                    
-                    
+    
             }
+
         }
+
+
         if(y < HEIGHT)
         {
             SDL_LockSurface(SurfMand);
-            data->y = y;
 
             for (int i = 0; i < MAX_THREADS; i++)
             {
                 if (y < HEIGHT)
                 {
-                    
+                    datas[i]->y = y;
 
-                    thread[i] = SDL_CreateThread(renduLigne,   data);
+                    thread[i] = SDL_CreateThread(renduLigne,datas[i]);
+
                     y++;
-                    data->y++;
                 }
-                
-                
-            
-               
             }
+
+
             for (int i = 0; i < MAX_THREADS; i++)
             {
                 
                 SDL_WaitThread(thread[i],NULL);
-                
             
                
             }
-            
+
             SDL_UnlockSurface(SurfMand);
         }
         
@@ -193,23 +198,26 @@ int main(int argc, char* argv[])
         char txt[100];
         sprintf(txt, "x = %lf y = %lf zoom = %lf", start_x,start_y,zoom);
         
-        texte  = TTF_RenderText_Solid(font, txt, couleur);
-        position2.y = HEIGHT- texte->h;
-        SDL_BlitSurface(texte, NULL, ecran, &position2);
-        SDL_FreeSurface(texte);
+        //texte  = TTF_RenderText_Solid(font, txt, couleur);
+        //position2.y = HEIGHT- texte->h;
+        //SDL_BlitSurface(texte, NULL, ecran, &position2);
+        //SDL_FreeSurface(texte);
 
         SDL_Flip(ecran);
         fprintf(stderr, "%s", SDL_GetError());
         fprintf(stderr, "%s", TTF_GetError());
-        int z = 1;
 
     }
 
     SDL_FreeSurface(image);
     SDL_FreeSurface(SurfMand);
     SDL_FreeSurface(ecran);
-    TTF_CloseFont(font); 
-    free(data);
+    //TTF_CloseFont(font);
+    for (int i = 0; i < MAX_THREADS; i++)
+    {
+        free(datas[i]);
+    }
+     
     TTF_Quit();
     SDL_Quit();
     return EXIT_SUCCESS;
@@ -217,16 +225,12 @@ int main(int argc, char* argv[])
 
 int renduLigne(void *data){
     ThreadData *tdata = data;
-    SDL_Surface *image = tdata->image;
-    SDL_Surface *SurfMand = tdata->SurfMand;
-    int u = tdata->y;
+    int y = tdata->y;
 
-    Uint8 r,g,b;
-    Uint32 *p = image->pixels;
-    int pitch;
-    Uint32 *pixelsMand = SurfMand->pixels;
+    Uint32 *p = tdata->image->pixels;
+    Uint32 *pixelsMand = tdata->SurfMand->pixels;
     
-    long double p_i = ( u-HEIGHT/2 )/ (zoom* HEIGHT)+start_y;
+    long double p_i = ( y-HEIGHT/2 )/ (zoom* HEIGHT)+start_y;
 
 
     for (int x = 0; x < WIDTH; ++x) {
@@ -237,13 +241,13 @@ int renduLigne(void *data){
 
         if (i == MAX_ITERATION)
         {
-            pixelsMand[u *WIDTH + x] = 0;
+            pixelsMand[y *WIDTH + x] = 0;
         }
         else
         {
             i= i*color;
-            i= i%image->w;
-            pixelsMand[u *WIDTH + x] = p[i];
+            i= i%tdata->image->w;
+            pixelsMand[y *WIDTH + x] = p[i];
         }
     }
 
