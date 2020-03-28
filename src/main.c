@@ -1,9 +1,8 @@
 #include <SDL/SDL.h> 
 #include <stdio.h> 
 #include <stdlib.h>
-#include <SDL/SDL_ttf.h>
 #include <math.h>
-#define MAX_THREADS 64
+#define MAX_THREADS 60
 
 int mandelbrot(double  p_r, double p_i);
 int renduLigne(void *data);
@@ -39,10 +38,9 @@ int main(int argc, char* argv[])
     
     
 
-    SDL_Surface *ecran;//,*texte;
+    SDL_Surface *ecran;
     
     SDL_Init(SDL_INIT_VIDEO);
-    TTF_Init();
 
     ecran = SDL_SetVideoMode(WIDTH, HEIGHT, 32, SDL_HWSURFACE);
     SDL_WM_SetCaption("Ma super fenêtre SDL !", NULL);
@@ -52,15 +50,10 @@ int main(int argc, char* argv[])
     SDL_LockSurface(image);
 
     SDL_Rect position = {0,0,0,0};
-    SDL_Rect position2 = {0,0,0,0};
-    SDL_Rect *rect;
 
-    //TTF_Font *font=TTF_OpenFont("arial.ttf", 20);
-    //SDL_Color couleur = {0,0,0};
+    SDL_Rect rect;
 
 
-    SDL_Event events;
-    int isOpen = 1;
 
     for (int i = 0; i < MAX_THREADS; i++)
     {
@@ -70,6 +63,8 @@ int main(int argc, char* argv[])
 
     }
     
+    SDL_Event events;
+    int isOpen = 1;
 
     while (isOpen)
     {
@@ -118,10 +113,10 @@ int main(int argc, char* argv[])
                 case SDL_MOUSEBUTTONDOWN:
 
                     
-                        rect->x = events.button.x;
-                        rect->y = events.button.y;
-                        rect->w = 0;
-                        rect->h = 0;
+                        rect.x = events.button.x;
+                        rect.y = events.button.y;
+                        rect.w = 0;
+                        rect.h = 0;
                         pressed = 1;
                     
                     break;
@@ -129,14 +124,14 @@ int main(int argc, char* argv[])
                 case SDL_MOUSEBUTTONUP:
 
                     pressed = 0;
-                    if (rect->h !=0 &&rect->w !=0)
+                    if (rect.h !=0 &&rect.w !=0)
                     {
                         Pzoom = zoom; Pstart_x =start_x; Pstart_y = start_y;
-                        double cx = (rect->x+ rect->w/2) -WIDTH/2 ;
-                        double cy = (rect->y+rect->h/2) -HEIGHT/2;
+                        double cx = (rect.x+ rect.w/2) -WIDTH/2 ;
+                        double cy = (rect.y+rect.h/2) -HEIGHT/2;
                         start_x = cx/zoom/(double) WIDTH+ start_x ;
                         start_y = cy/zoom/(double)HEIGHT+start_y;
-                        zoom*= (double)HEIGHT/(double) rect->h;
+                        zoom*= (double)HEIGHT/(double) rect.h;
                         y = 0;
 
                     }
@@ -144,8 +139,8 @@ int main(int argc, char* argv[])
 
                 case SDL_MOUSEMOTION:
 
-                    rect->w = events.motion.x - rect->x;
-                    rect->h = (events.motion.x - rect->x)*(double)HEIGHT/(double)WIDTH;
+                    rect.w = events.motion.x - rect.x;
+                    rect.h = (events.motion.x - rect.x)*(double)HEIGHT/(double)WIDTH;
                     break;
 
                     
@@ -193,32 +188,25 @@ int main(int argc, char* argv[])
         SDL_BlitSurface(SurfMand, NULL, ecran, &position);
         
         if(pressed){
-            dessinerRectangle(ecran, rect, SDL_MapRGB(ecran->format,255,0,0));
+            dessinerRectangle(ecran, &rect, SDL_MapRGB(ecran->format,255,0,0));
         }
         char txt[100];
         sprintf(txt, "x = %lf y = %lf zoom = %lf", start_x,start_y,zoom);
         
-        //texte  = TTF_RenderText_Solid(font, txt, couleur);
-        //position2.y = HEIGHT- texte->h;
-        //SDL_BlitSurface(texte, NULL, ecran, &position2);
-        //SDL_FreeSurface(texte);
+       
  
         SDL_Flip(ecran);
-        fprintf(stderr, "%s", SDL_GetError());
-        fprintf(stderr, "%s", TTF_GetError());
 
     }
 
     SDL_FreeSurface(image);
     SDL_FreeSurface(SurfMand);
     SDL_FreeSurface(ecran);
-    //TTF_CloseFont(font);
     for (int i = 0; i < MAX_THREADS; i++)
     {
         free(datas[i]);
     }
      
-    TTF_Quit();
     SDL_Quit();
     return EXIT_SUCCESS;
 }
