@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <math.h>
 #define MAX_THREADS 60
+#define HEIGHT 480
+#define WIDTH (HEIGHT * 16/9)
 
 int mandelbrot(double  p_r, double p_i);
 int renduLigne(void *data);
@@ -11,9 +13,7 @@ void dessinerRectangle(SDL_Surface *surface, SDL_Rect *rect, Uint32 couleur);
 
 char nomFichier[50] = "material/1.bmp";
 
-const int HEIGHT = 600 ,WIDTH = 800;
 double zoom= 0.4, start_x =-0.75, start_y= 0;
-double Pzoom= 0.4, Pstart_x , Pstart_y= 0;
 
 unsigned int MAX_ITERATION = 1000;
 int y =0;
@@ -91,13 +91,7 @@ int main(int argc, char* argv[])
                             MAX_ITERATION+=100;
                             y=0;
                             break;
-                        case SDLK_ESCAPE:
-                            zoom =Pzoom;
-                            start_x=Pstart_x;
-                            start_y =Pstart_y;
-                          
-                            y=0;
-                            break;
+                        
                         case SDLK_a:
                             color++;
                           
@@ -112,21 +106,29 @@ int main(int argc, char* argv[])
                     
                 case SDL_MOUSEBUTTONDOWN:
 
-                    
+                    if (events.button.button == SDL_BUTTON_LEFT)
+                    {
                         rect.x = events.button.x;
                         rect.y = events.button.y;
                         rect.w = 0;
                         rect.h = 0;
                         pressed = 1;
+                    }else
+                    {
+                        zoom/=2;
+                        y=0;
+                    }
+                    
+                    
+                        
                     
                     break;
                     
                 case SDL_MOUSEBUTTONUP:
 
                     pressed = 0;
-                    if (rect.h !=0 &&rect.w !=0)
+                    if ( events.button.button == SDL_BUTTON_LEFT && rect.h !=0 &&rect.w !=0)
                     {
-                        Pzoom = zoom; Pstart_x =start_x; Pstart_y = start_y;
                         double cx = (rect.x+ rect.w/2) -WIDTH/2 ;
                         double cy = (rect.y+rect.h/2) -HEIGHT/2;
                         start_x = cx/zoom/(double) WIDTH+ start_x ;
@@ -152,6 +154,7 @@ int main(int argc, char* argv[])
 
         if(y < HEIGHT)
         {
+            int nbThreadutilisee = 0;
             SDL_LockSurface(SurfMand);
 
             for (int i = 0; i < MAX_THREADS; i++)
@@ -161,13 +164,13 @@ int main(int argc, char* argv[])
                     datas[i]->y = y;
 
                     thread[i] = SDL_CreateThread(renduLigne,datas[i]);
-
+                    nbThreadutilisee++;
                     y++;
                 }
             }
 
 
-            for (int i = 0; i < MAX_THREADS; i++)
+            for (int i = 0; i < nbThreadutilisee; i++)
             {
                 
                 SDL_WaitThread(thread[i],NULL);
